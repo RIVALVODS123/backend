@@ -139,7 +139,7 @@ function renderRevision(sub) {
       <div><div class="fl">Raza / Origen</div><div class="fv">${e(sub.pgRaza)}</div></div>
     </div>
     <div class="fl" style="margin-bottom:8px">Historia del personaje</div>
-    <div class="prose">${e(sub.historia)}</div>
+    <div class="prose" style="white-space:normal">${e(sub.historia)}</div>
   </section>
 
   <section>
