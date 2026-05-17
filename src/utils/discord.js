@@ -1,55 +1,41 @@
 /**
- * Sends a Discord embed notification to the staff webhook when a new
- * whitelist submission arrives.
+ * Sends a compact Discord embed with a link to the full revision page.
  */
-async function notifyDiscord(submission) {
+async function notifyDiscord({ id, revisionUrl, discordId, edad, exp, quizScore, pgNombre }) {
   const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
-  if (!webhookUrl) return; // webhook optional; skip silently
+  if (!webhookUrl) return;
 
-  const scoreColor = submission.quizScore >= 8
-    ? 0x57f287  // green
-    : submission.quizScore >= 5
-      ? 0xfee75c // yellow
-      : 0xed4245; // red
+  const scoreColor = quizScore >= 8 ? 0x57f287 : quizScore >= 5 ? 0xfee75c : 0xed4245;
+  const scoreIcon  = quizScore >= 8 ? '✅' : quizScore >= 5 ? '⚠️' : '❌';
+
+  const EXP_MAP = { ninguna: 'Ninguna', basica: 'Básica', media: 'Media', avanzada: 'Avanzada' };
 
   const embed = {
     title: '📋 Nueva solicitud de WhiteList',
     color: scoreColor,
+    description: `[🔍 Abrir revisión completa](${revisionUrl})`,
     fields: [
-      { name: 'Discord', value: submission.discordTag, inline: true },
-      { name: 'Edad', value: String(submission.edad), inline: true },
-      { name: 'Cómo nos encontró', value: submission.fuente, inline: true },
-      { name: 'Experiencia en rol', value: submission.exp, inline: true },
-      { name: 'Nota del quiz', value: `${submission.quizScore}/10`, inline: true },
-      { name: 'Nombre del personaje', value: submission.pgNombre, inline: true },
-      { name: 'Raza / Origen', value: submission.pgRaza, inline: true },
-      { name: 'Experiencia previa', value: truncate(submission.otrosServers, 300) },
-      { name: 'Historia del personaje', value: truncate(submission.historia, 800) },
-      { name: 'Situación 1', value: truncate(submission.sit1, 300) },
-      { name: 'Situación 2', value: truncate(submission.sit2, 300) },
-      { name: 'Situación 3', value: truncate(submission.sit3, 300) },
-      { name: 'Pregunta de normas', value: truncate(submission.preguntaResp, 200) },
+      { name: 'ID',          value: id,                                  inline: true },
+      { name: 'Discord',     value: discordId,                           inline: true },
+      { name: 'Edad',        value: String(edad),                        inline: true },
+      { name: 'Personaje',   value: pgNombre,                            inline: true },
+      { name: 'Experiencia', value: EXP_MAP[exp] || exp,                 inline: true },
+      { name: 'Quiz',        value: `${quizScore}/10 ${scoreIcon}`,      inline: true },
+      { name: 'Estado',      value: '⏳ Pendiente de revisión',           inline: false },
     ],
-    footer: { text: `ID: ${submission.id} · Urban Legacy` },
+    footer: { text: 'Urban Legacy · Whitelist' },
     timestamp: new Date().toISOString(),
   };
-
-  const body = JSON.stringify({ embeds: [embed] });
 
   const response = await fetch(webhookUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body,
+    body: JSON.stringify({ embeds: [embed] }),
   });
 
   if (!response.ok) {
     console.error('[discord] Webhook failed:', response.status, await response.text());
   }
-}
-
-function truncate(str, max) {
-  if (!str) return '—';
-  return str.length > max ? str.slice(0, max) + '…' : str;
 }
 
 module.exports = { notifyDiscord };

@@ -5,6 +5,7 @@ const cors = require('cors');
 
 const { globalLimiter } = require('./middleware/rateLimiter');
 const formsRouter = require('./routes/forms');
+const revisionRouter = require('./routes/revision');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -37,6 +38,7 @@ app.use(globalLimiter);
 
 // ── Routes ────────────────────────────────────────────────────────────────────
 app.use('/forms', formsRouter);
+app.use('/revision', revisionRouter);
 
 // Health check
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));
