@@ -1,9 +1,7 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
-const crypto = require('crypto');
 
 const { submitLimiter } = require('../middleware/rateLimiter');
-const { pool } = require('../db');
 const { scoreQuiz } = require('../utils/scorer');
 const { notifyDiscord } = require('../utils/discord');
 
@@ -108,68 +106,31 @@ router.post(
       answer: data[`question-${i}`],
     }));
 
-    const { score, detail } = scoreQuiz(quizAnswers);
+    const { score } = scoreQuiz(quizAnswers);
 
-    // Hash IP for privacy (GDPR-friendly — no raw IP stored)
-    const rawIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim()
-      || req.socket?.remoteAddress
-      || '';
-    const ipHash = crypto.createHash('sha256').update(rawIp).digest('hex');
-
-    let newId;
+    // Send to Discord and return immediately — no DB needed
     try {
-      const result = await pool.query(
-        `INSERT INTO whitelist_submissions
-           (discord_tag, edad, fuente, exp, otros_servers,
-            quiz_score, quiz_detail,
-            sit_1, sit_2, sit_3,
-            pg_nombre, pg_raza, historia, pregunta_resp,
-            ip_hash)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
-         RETURNING id`,
-        [
-          discord_id,
-          parseInt(data.edad, 10),
-          data.fuente,
-          data.exp,
-          data['otros-servers'],
-          score,
-          JSON.stringify(detail),
-          data['sit-1'],
-          data['sit-2'],
-          data['sit-3'],
-          data['pg-nombre'],
-          data['pg-raza'],
-          data.historia,
-          data.pregunta,
-          ipHash,
-        ]
-      );
-      newId = result.rows[0].id;
-    } catch (dbErr) {
-      console.error('[whitelist] DB error:', dbErr.message);
-      return res.status(500).json({ success: false, error: 'Error al guardar la solicitud.' });
+      await notifyDiscord({
+        discordTag: discord_id,
+        edad: data.edad,
+        fuente: data.fuente,
+        exp: data.exp,
+        quizScore: score,
+        pgNombre: data['pg-nombre'],
+        pgRaza: data['pg-raza'],
+        otrosServers: data['otros-servers'],
+        historia: data.historia,
+        sit1: data['sit-1'],
+        sit2: data['sit-2'],
+        sit3: data['sit-3'],
+        preguntaResp: data.pregunta,
+      });
+    } catch (err) {
+      console.error('[discord] notify error:', err.message);
+      return res.status(502).json({ success: false, error: 'No se pudo notificar al staff.' });
     }
 
-    // Discord notification (non-blocking — don't fail the request if it errors)
-    notifyDiscord({
-      id: newId,
-      discordTag: discord_id,
-      edad: data.edad,
-      fuente: data.fuente,
-      exp: data.exp,
-      quizScore: score,
-      pgNombre: data['pg-nombre'],
-      pgRaza: data['pg-raza'],
-      otrosServers: data['otros-servers'],
-      historia: data.historia,
-      sit1: data['sit-1'],
-      sit2: data['sit-2'],
-      sit3: data['sit-3'],
-      preguntaResp: data.pregunta,
-    }).catch(err => console.error('[discord] notify error:', err.message));
-
-    return res.status(201).json({ success: true, id: newId, quizScore: score });
+    return res.status(201).json({ success: true, quizScore: score });
   }
 );
 

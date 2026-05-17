@@ -5,7 +5,6 @@ const cors = require('cors');
 
 const { globalLimiter } = require('./middleware/rateLimiter');
 const formsRouter = require('./routes/forms');
-const { initDb } = require('./db');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -52,11 +51,4 @@ app.use((err, _req, res, _next) => {
 });
 
 // ── Start ─────────────────────────────────────────────────────────────────────
-initDb()
-  .then(() => {
-    app.listen(PORT, () => console.log(`[server] Listening on port ${PORT}`));
-  })
-  .catch(err => {
-    console.error('[server] DB init failed:', err.message);
-    process.exit(1);
-  });
+app.listen(PORT, () => console.log(`[server] Listening on port ${PORT}`));
