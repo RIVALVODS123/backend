@@ -19,6 +19,11 @@ function escapeHtml(str) {
     .replace(/'/g, '&#39;');
 }
 
+// Converts newlines to <br> so paragraph breaks are preserved in normal flow
+function eBr(str) {
+  return escapeHtml(str).replace(/\n/g, '<br>');
+}
+
 function renderRevision(sub) {
   const e = escapeHtml;
   const scoreClass = sub.quizScore >= 8 ? 'score-g' : sub.quizScore >= 5 ? 'score-y' : 'score-r';
@@ -139,7 +144,7 @@ function renderRevision(sub) {
       <div><div class="fl">Raza / Origen</div><div class="fv">${e(sub.pgRaza)}</div></div>
     </div>
     <div class="fl" style="margin-bottom:8px">Historia del personaje</div>
-    <div class="prose" style="white-space:normal">${e(sub.historia)}</div>
+    <div class="prose" style="white-space:normal;word-break:break-word">${eBr(sub.historia)}</div>
   </section>
 
   <section>
